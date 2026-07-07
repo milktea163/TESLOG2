@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>テスト攻略ログ V26</title>
+    <link rel="apple-touch-icon" href="IMG_5878.jpeg">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #fdfcf0;
+            --main-pink: #ffafcc;
+            --main-blue: #a2d2ff;
+            --text-color: #5d5d5d;
+            --card-bg: #ffffff;
+            --accent-pink: #ff8fab;
+            --accent-green: #2ecc71;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: env(safe-area-inset-top) 15px 120px 15px;
+            text-align: center;
+        }
+
+        /* スタート画面（ズームアップ演出＆可愛い背景デコレーション） */
+        #welcome-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(#ffafcc 15%, transparent 15%), radial-gradient(#ffafcc 15%, transparent 15%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: transform 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.6s ease;
+        }
+        #welcome-screen.implode {
+            transform: scale(2.5); opacity: 0; pointer-events: none;
+        }
+        
+        /* 🆕 アプリのアイコン画像が確実に入り込んで表示される白い四角枠 */
+        .app-icon-container { 
+            width: 140px; height: 140px; margin-bottom: 20px; border-radius: 35px; overflow: hidden; 
+            box-shadow: 0 8px 20px rgba(255,175,204,0.4); border: 4px solid white; background: white;
+            display: flex; align-items: center; justify-content: center; position: relative;
+        }
+        .app-icon-container img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        /* 🆕 タイトル文字を圧倒的にはっきり見せるための縁取りクッキリ加工 */
+        .welcome-title {
+            font-size: 2.8rem; 
+            font-family: "Hiragino Maru Gothic ProN", "ヒラギノ丸ゴ ProN W4", "Zen Maru Gothic", Arial, sans-serif;
+            color: #ff6b8b; 
+            font-weight: 900; 
+            margin: 0 0 15px 0; 
+            letter-spacing: 2px;
+            text-shadow: 
+                3px 3px 0px #fff, 
+               -3px -3px 0px #fff, 
+                3px -3px 0px #fff, 
+               -3px 3px 0px #fff,
+                0px 3px 0px #fff,
+                0px -3px 0px #fff,
+                3px 0px 0px #fff,
+               -3px 0px 0px #fff,
+                0px 8px 15px rgba(255, 107, 139, 0.3);
+        }
+
+        .decor-emoji { position: absolute; font-size: 2rem; opacity: 0.7; }
+        .decor-1 { top: 10%; left: 10%; transform: rotate(-15deg); }
+        .decor-2 { top: 15%; right: 12%; transform: rotate(20deg); }
+        .decor-3 { bottom: 15%; left: 15%; transform: rotate(10deg); }
+        .decor-4 { bottom: 12%; right: 10%; transform: rotate(-25deg); }
+
+        .teacher-bubble {
+            background: white; border: 3px solid var(--main-pink); padding: 15px 25px;
+            border-radius: 25px; max-width: 80%; margin-bottom: 35px; font-weight: bold;
+            position: relative; box-shadow: 0 5px 0 #ffafcc; font-size: 1.05rem;
+        }
+        .teacher-bubble::after {
+            content:''; position: absolute; top: 100%; left: 50%; margin-left: -10px;
+            border-width: 10px; border-style: solid; border-color: white transparent transparent transparent;
+        }
+        .teacher-bubble::before {
+            content:''; position: absolute; top: 100%; left: 50%; margin-left: -13px;
+            border-width: 13px; border-style: solid; border-color: var(--main-pink) transparent transparent transparent; z-index: -1;
+        }
+        .btn-enter {
+            background: var(--main-pink); color: white; border: none; padding: 18px 45px;
+            border-radius: 35px; font-size: 1.3rem; font-weight: 900; box-shadow: 0 6px 0 var(--accent-pink);
+            cursor: pointer; animation: welcomePulse 1.5s infinite; letter-spacing: 1px;
+        }
+
+        /* カウントダウンバナー */
+        .countdown-banner {
+            background-color: #ffc8dd;
+            padding: 15px;
+            border-radius: 25px;
+            box-shadow: 0 5px 0 #ffafcc;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        #countdown-display { font-size: 1.4rem; font-weight: bold; color: white; }
+
+        @keyframes welcomePulse { 0% { transform: scale(1); } 50% { transform: scale(1.04); } 100% { transform: scale(1); } }
+        @keyframes pulseBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes guideBlink { 0%, 100% { background-color: #ff8fab; } 50% { background-color: #ffafcc; } }
+
+        .blink-btn { animation: pulseBlink 1.2s infinite; }
+        .blink-guide { animation: guideBlink 1.5s infinite; color: white !important; font-weight: bold; text-decoration: none; }
+
+        .pop-card {
+            background: var(--card-bg);
+            border-radius: 30px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 0 #eee;
+            border: 3px solid #ffafcc;
+        }
+
+        /* タイマー */
+        #timer-display { font-size: 3.5rem; font-weight: 900; color: var(--accent-pink); margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .btn-preset {
+            background-color: var(--main-blue);
+            color: white; border: none; padding: 10px 15px; border-radius: 15px;
+            font-weight: bold; box-shadow: 0 4px 0 #89c2fa; margin: 0 5px; cursor: pointer;
+        }
+        .subject-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .subject-btn {
+            background: white; border: 2px solid #ddd; padding: 10px; border-radius: 20px;
+            font-size: 0.8rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .subject-btn.active { background: var(--main-pink); color: white; border-color: var(--accent-pink); box-shadow: 0 4px 0 var(--accent-pink); }
+
+        /* 音声設定トグル */
+        .sound-toggle-container { margin: 12px 0 5px 0; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: bold; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-pink); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* リアルタイム集計カウンター */
+        .counter-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; background: #fff8fa; padding: 10px; border-radius: 15px; border: 1px dashed var(--main-pink); }
+        .counter-badge { background: white; border: 1px solid #ffc8dd; padding: 4px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
+
+        /* 時間塗りつぶし表(メイン画面用: 15枠) */
+        .time-grid-container { overflow-x: auto; margin-bottom: 15px; }
+        .time-table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 0.7rem; min-width: 480px; margin: 0; padding: 0; }
+        .time-table th, .time-table td { border: 1px solid #ddd; padding: 6px 0; text-align: center; overflow: hidden; }
+        .time-table th { background: #f8f8f8; }
+        .time-table th:first-child, .time-table td:first-child { width: 20%; }
+        .time-table th:not(:first-child):not(:last-child), .time-table td:not(:first-child):not(:last-child) { width: 5%; }
+        .time-table th:last-child, .time-table td:last-child { width: 10%; }
+        .cell-fill { width: 100%; height: 20px; margin: 0; padding: 0; border: none; transition: background-color 0.2s; }
+
+        /* 🆕 詳細画面用の拡張タイムテーブルスタイル（60枠用） */
+        .time-table-extended { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 0.65rem; min-width: 1200px; margin: 0; padding: 0; }
+        .time-table-extended th, .time-table-extended td { border: 1px solid #ddd; padding: 6px 0; text-align: center; overflow: hidden; }
+        .time-table-extended th { background: #f8f8f8; }
+        /* 1列目(教科名)に12%、最後の合計に6%を割り当て、残りの60枠のマス目をすべて均等にカチッと揃えます */
+        .time-table-extended th:first-child, .time-table-extended td:first-child { width: 12%; font-size: 0.75rem; }
+        .time-table-extended th:not(:first-child):not(:last-child), .time-table-extended td:not(:first-child):not(:last-child) { width: 1.35%; }
+        .time-table-extended th:last-child, .time-table-extended td:last-child { width: 6%; }
+
+        /* カレンダー */
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .cal-day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            background: #fff; border-radius: 10px; font-size: 0.8rem; border: 1px solid #ffc8dd; position: relative;
+        }
+        .cal-day.today { border: 3px solid var(--main-blue); }
+        .cal-day.test-period { background-color: #ffe5ec; border-radius: 0; border: 2px solid var(--accent-pink); font-weight: bold; }
+        .cal-day.has-data::after { content: ''; position: absolute; bottom: 3px; width: 6px; height: 6px; background: var(--accent-pink); border-radius: 50%; }
+
+        /* 教科設定 */
+        .setting-subject-item {
+            display: flex; align-items: center; gap: 10px;
+            background: white; padding: 10px; border-radius: 15px;
+            border: 2px solid #ddd; margin-bottom: 10px;
+        }
+        .setting-subject-item input[type=color] {
+            border: none; width: 35px; height: 35px; border-radius: 50%; padding: 0;
+            background: transparent; cursor: pointer;
+        }
+        .setting-subject-item input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+        .setting-subject-item input[type=color]::-webkit-color-swatch { border: none; border-radius: 50%; }
+        .setting-subject-item input[type=text] {
+            flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-size: 1rem;
+        }
+        .btn-delete { background: #e2e8f0; color: #64748b; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        /* 🆕 管理用ボタン（バグを修正し「削除」の文字に変更したパーツ） */
+        .btn-manage-delete {
+            background: #f1f5f9; color: #64748b; border: 2px solid #cbd5e1; 
+            border-radius: 15px; padding: 0 20px; font-weight: bold; cursor: pointer; 
+            font-size: 0.95rem; box-shadow: 0 4px 0 #cbd5e1; transition: background 0.2s;
+        }
+        .btn-manage-delete:active { transform: translateY(4px); box-shadow: none; }
+
+        .add-subject-btn {
+            background: #fff0f5; border: 2px dashed #ffafcc; color: #ff8fab;
+            padding: 15px; border-radius: 15px; width: 100%; font-weight: bold; margin-top: 5px; cursor: pointer;
+        }
+
+        /* 進捗モーダル */
+        #progress-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,175,204,0.98); z-index: 2000; overflow-y: auto; padding: 20px 0 100px 0;
+        }
+        .modal-content { padding: 0 15px; }
+        .task-group { background: white; border-radius: 20px; padding: 15px; margin-bottom: 15px; text-align: left; }
+        .task-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .task-row input[type="text"] { border: 1px solid #ddd; border-radius: 8px; padding: 8px; flex: 1; font-size: 0.9rem; }
+        
+        .check-box-group { display: flex; gap: 4px; }
+        .check-square {
+            width: 25px; height: 25px; border: 2px solid #ffafcc; border-radius: 6px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; background: white;
+        }
+        .check-square.checked { background: var(--main-pink); border-color: var(--accent-pink); }
+        .check-square.checked::after { content: '✓'; color: white; font-weight: bold; }
+
+        .rep-selector { background: #fff; border-radius: 15px; padding: 10px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 2px solid #ff8fab; }
+
+        /* 詳細レポート用画面 */
+        .full-screen-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 3000; overflow-y: auto; padding: 20px 15px 100px 15px; box-sizing: border-box;
+        }
+        .report-box {
+            background: white; border: 3px solid #ffafcc; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 0 #eee;
+        }
+        .test-period-btn {
+            background-color: var(--main-blue); color: white; border: none; padding: 15px; border-radius: 15px;
+            width: 100%; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; box-shadow: 0 4px 0 #72aee6; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;
+        }
+        .reflection-item { margin-bottom: 15px; text-align: left; }
+        .reflection-item label { font-weight: bold; font-size: 1rem; display: flex; align-items: center; margin-bottom: 8px; }
+        .reflection-item textarea { 
+            width: 100%; border: 2px solid #ddd; border-radius: 10px; padding: 10px; box-sizing: border-box; 
+            font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 80px; 
+        }
+
+        .btn-main {
+            background-color: var(--main-pink); color: white; border: none;
+            padding: 15px 30px; border-radius: 50px; font-weight: bold;
+            font-size: 1.1rem; box-shadow: 0 6px 0 var(--accent-pink); margin: 10px 0; cursor: pointer;
+        }
+        .fixed-footer { position: fixed; bottom: 20px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 2100; }
+
+        .help-btn {
+            display: inline-flex; justify-content: center; align-items: center;
+            width: 26px; height: 26px; border-radius: 50%;
+            background: var(--main-pink); color: white;
+            font-size: 1rem; font-weight: bold; cursor: pointer;
+            margin-left: 8px; position: relative; border: none;
+        }
+        .tooltip-text {
+            visibility: hidden; width: 220px;
+            background-color: #5d5d5d; color: #fff;
+            text-align: left; border-radius: 8px; padding: 10px;
+            position: absolute; z-index: 4000;
+            bottom: 135%; left: 50%; transform: translateX(-50%);
+            font-size: 0.8rem; font-weight: normal; line-height: 1.4;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            opacity: 0; transition: opacity 0.2s; white-space: normal;
+        }
+        .tooltip-text::after {
+            content: ""; position: absolute;
+            top: 100%; left: 50%; margin-left: -6px;
+            border-width: 6px; border-style: solid;
+            border-color: #5d5d5d transparent transparent transparent;
+        }
+        .help-btn.active .tooltip-text { visibility: visible; opacity: 1; }
+
+        .top-guide-banner {
+            background-color: var(--main-pink); padding: 12px; border-radius: 15px;
+            margin-top: 10px; margin-bottom: 25px; cursor: pointer; display: block;
+        }
+        .footer-guide-box {
+            background: #fff; border: 2px dashed var(--main-blue); border-radius: 20px;
+            padding: 15px; margin-top: 30px; text-align: left; font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-screen">
+        <div class="decor-emoji decor-1">🌸</div>
+        <div class="decor-emoji decor-2">✨</div>
+        <div class="decor-emoji decor-3">🧸</div>
+        <div class="decor-emoji decor-4">💖</div>
+        
+        <div class="app-icon-container">
+            <img src="IMG_5878.jpeg" alt="App Icon" id="welcome-app-icon">
+        </div>
+        
+        <h1 class="welcome-title">テスト攻略ログ</h1>
+        
+        <div class="teacher-bubble">
+            👩‍🏫「目標を設定して、15分ずつの積み重ねでテストを攻略しよう！」
+        </div>
+        <button class="btn-enter" onclick="enterApp()">ENTER TESLOG</button>
+    </div>
+
+    <div class="countdown-banner">
+        🚀 次のテストまであと...<br>
+        <div id="countdown-display">タップして日付を設定！</div>
+        <input type="date" id="test-date-picker" onchange="updateTestDate(this.value)" 
+               style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+    </div>
+
+    <div class="pop-card">
+        <div id="timer-display">00:15:00</div>
+        <div id="timer-status" style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">停止中</div>
+        <div class="preset-buttons">
+            <button class="btn-preset" onclick="initTimer(15)">15分</button>
+            <button class="btn-preset" onclick="initTimer(30)">30分</button>
+            <button class="btn-preset" onclick="initTimer(60)">1時間</button>
+        </div>
+        
+        <div class="sound-toggle-container">
+            🔔 15分ごとの音通知
+            <label class="switch">
+                <input type="checkbox" id="sound-toggle" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="subject-grid" id="subject-buttons"></div>
+        <button class="btn-main blink-btn" id="start-btn" onclick="toggleTimer()">START!</button>
+    </div>
+
+    <button class="btn-main" style="background:var(--main-blue); box-shadow:0 6px 0 #72aee6; margin-bottom: 5px;" onclick="openProgress()">🏁 ページ攻略メーターを開く</button>
+
+    <a class="top-guide-banner blink-guide" href="#guide-anchor">
+        📖 【使い方】初めての人はココをタップして活用ガイドを読おう！
+    </a>
+
+    <div class="pop-card">
+        <h2 style="font-size:1rem; margin-bottom:10px; display:flex; justify-content:center; align-items:center;">
+            📊 今日の勉強時間（1マス15分）
+            <button class="help-btn" onclick="toggleTooltip(this, event)">?
+                <span class="tooltip-text">一番上のタイマーで勉強時間を計ると、自動的に15分ごとに色が塗られていくよ！</span>
+            </button>
+        </h2>
+        
+        <div class="counter-container" id="live-counters"></div>
+        <div class="time-grid-container" id="time-grid-root"></div>
+    </div>
+
+    <div class="pop-card">
+        <h2>🕸 教科バランス</h2>
+        <canvas id="radarChart"></canvas>
+    </div>
+
+    <div class="pop-card">
+        <div class="cal-header">
+            <button class="btn-preset" onclick="changeMonth(-1)">◀</button>
+            <h2 id="cal-month-title" style="margin:0;">2024年 5月</h2>
+            <button class="btn-preset" onclick="changeMonth(1)">▶</button>
+        </div>
+        <div class="calendar-grid" id="cal-grid"></div>
+        
+        <button class="btn-main" style="width:100%; margin-top:20px; background-color: var(--main-pink); box-shadow: 0 6px 0 var(--accent-pink);" onclick="openReportModal()">📊 詳しく見る（詳細分析）</button>
+
+        <div style="margin-top:20px; text-align:left; font-size:0.9rem; border-top:1px solid #eee; padding-top:15px;">
+            <strong style="display:flex; align-items:center;">📝 テスト期間の登録:
+                <button class="help-btn" onclick="toggleTooltip(this, event)">?
+                    <span class="tooltip-text">期間を登録するとカレンダーの背景色が変わり、「詳細分析」でテスト専用のレポートが作れるようになるよ！</span>
+                </button>
+            </strong><br>
+            <input type="text" id="test-period-name" placeholder="例: 第1回定期テスト" style="width:100%; box-sizing:border-box; margin:5px 0; border:1px solid #ddd; padding:8px; border-radius:5px;">
+            <div style="display:flex; gap:5px; margin-bottom: 10px;">
+                <input type="date" id="test-start" style="flex:1; border:1px solid #ddd; border-radius:5px; padding:8px;"> 
+                <span style="line-height:35px;">〜</span>
+                <input type="date" id="test-end" style="flex:1; border:1px solid #ddd; border-radius:5px; padding:8px;">
+            </div>
+            <button class="btn-preset" style="width:100%; margin:0; background:var(--accent-green); box-shadow:0 4px 0 #27ae60;" onclick="addTestPeriod()">期間をカレンダーに登録</button>
+        </div>
+    </div>
+
+    <div class="pop-card" id="settings-card">
+        <h2>🎨 教科設定</h2>
+        <div id="setting-list"></div>
+        <button class="add-subject-btn" onclick="addSub()">＋ 教科を追加</button>
+    </div>
+
+    <div class="footer-guide-box" id="guide-anchor">
+        <h3 style="margin-top:0; color:var(--main-blue);">💡 テスト攻略ログの活用ガイド</h3>
+        <p><strong>1. 日々の勉強を記録しよう</strong><br>教科を選んで「START!」を押すだけで自動で15分ごとにグリッドが塗られ、上の集計カウンターに時間が追加されてしていきます。</p>
+        <p><strong>2. テスト範囲を攻略しよう</strong><br>「ページ攻略メーター」を開くと、テストごとの専用やることリストを作って周回数をチェック管理できます。</p>
+        <p><strong>3. テスト期間が終わったら</strong><br>「詳しく見る」から振り返りメッセージを残せます。不要になったテスト期間は削除ボタンでいつでも消去可能です。</p>
+    </div>
+
+    <div id="progress-modal">
+        <div class="modal-content">
+            <h1 style="color:white; margin-bottom:5px;">🎯 テスト範囲攻略</h1>
+            <div style="margin-bottom:15px;">
+                <label style="color:white; font-weight:bold; font-size:0.9rem; display:block; margin-bottom:5px;">📋 対象 of テストを選択:</label>
+                <select id="task-test-period-select" onchange="switchTaskPeriod(this.value)" style="width:100%; padding:10px; border-radius:10px; font-size:1rem; border:none; max-width:300px;"></select>
+            </div>
+            <p style="color:white; font-size:0.85rem; margin-bottom:20px;">下のボタンで目標回数を決めて、終わったらチェックしよう！</p>
+            <div class="rep-selector">
+                <button class="btn-preset" onclick="setGlobalRep(3)">3回</button>
+                <button class="btn-preset" onclick="setGlobalRep(4)">4回</button>
+                <button class="btn-preset" onclick="setGlobalRep(5)">5回</button>
+            </div>
+            <div id="task-container"></div>
+        </div>
+        <div class="fixed-footer"><button class="btn-main" style="background:#5d5d5d;" onclick="closeProgress()">閉じて保存する</button></div>
+    </div>
+
+    <div id="report-modal" class="full-screen-modal">
+        <h2 style="color:var(--text-color); margin-top:10px;">詳細レポート</h2>
+        <div style="text-align: left; margin-bottom: 10px; font-weight: bold; padding-left:5px; font-size:1.1rem; color:var(--accent-pink);">📋 最近のテスト期間一覧</div>
+        <div id="test-period-list"></div>
+        <button class="btn-main" style="background:#ffafcc; width:100%; margin-top:20px;" onclick="closeReportModal()">戻る</button>
+    </div>
+
+    <div id="test-detail-modal" class="full-screen-modal">
+        <h2 id="detail-test-title" style="color:var(--text-color); margin-top:10px;">テスト詳細</h2>
+        <div class="report-box">
+            <h3 style="margin-top:0;">📊 期間中の勉強時間（合計60枠 / 15分刻み）</h3>
+            <div class="time-grid-container" id="period-time-grid-root"></div>
+        </div>
+        <div id="detail-subject-list"></div>
+        <button class="btn-main" style="background:var(--main-blue); width:100%; margin-top:20px;" onclick="closeTestDetail()">一覧へ戻る</button>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('studyLogStable')) || {
+            testDate: "", globalRepGoal: 3, testPeriods: [],
+            subjects: [
+                { id: 'kokugo', name: '文学国語', color: '#e83e8c', icon: '📖' },
+                { id: 'sugaku', name: '数学探究', color: '#00bcd4', icon: '📐' },
+                { id: 'kagaku', name: '科学', color: '#8bc34a', icon: '🔬' },
+                { id: 'seikei', name: '政治経済', color: '#ff5722', icon: '⚖️' },
+                { id: 'nihonshi', name: '日本史探究', color: '#ff9800', icon: '🏯' },
+                { id: 'eikomi', name: '英コミ', color: '#9c27b0', icon: '💬' },
+                { id: 'kateika', name: '家庭科', color: '#2196f3', icon: '🍳' },
+                { id: 'chiri', name: '地理', color: '#4caf50', icon: '🗺️' },
+                { id: 'hoken', name: '保健体育', color: '#795548', icon: '🏃' }
+            ],
+            history: {}, tasks: {}, periodTasks: {}
+        };
+        
+        let currentSubject = db.subjects[0].id;
+        let timerSeconds = 900, presetSeconds = 900, timerInterval, isRunning = false, calViewDate = new Date();
+        let selectedTaskPeriodId = "default";
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function enterApp() {
+            initAudio();
+            document.getElementById('welcome-screen').classList.add('implode');
+        }
+
+        /* 🆕 音色を「ピアノの右から2段目のラ (A6: 1760Hz)」に変更し、「ピピ、ピピ」とリズミカルに4回鳴るように調整 */
+        function playAlertSound() {
+            if(!document.getElementById('sound-toggle').checked) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const highFreq = 1760; // 1760Hz ＝ ピアノの右から2段目のラの音
+                
+                // 1回目の「ピ」
+                let osc1 = audioCtx.createOscillator();
+                let gain1 = audioCtx.createGain();
+                osc1.type = 'sine'; osc1.frequency.value = highFreq;
+                gain1.gain.setValueAtTime(0.35, now);
+                gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+                osc1.connect(gain1); gain1.connect(audioCtx.destination);
+                osc1.start(now); osc1.stop(now + 0.07);
+                
+                // 2回目の「ピ」
+                let osc2 = audioCtx.createOscillator();
+                let gain2 = audioCtx.createGain();
+                osc2.type = 'sine'; osc2.frequency.value = highFreq;
+                gain2.gain.setValueAtTime(0.35, now + 0.12);
+                gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.19);
+                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.start(now + 0.12); osc2.stop(now + 0.19);
+
+                // 3回目の「ピ」 (少し間を空けて次のセット)
+                let osc3 = audioCtx.createOscillator();
+                let gain3 = audioCtx.createGain();
+                osc3.type = 'sine'; osc3.frequency.value = highFreq;
+                gain3.gain.setValueAtTime(0.35, now + 0.35);
+                gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+                osc3.connect(gain3); gain3.connect(audioCtx.destination);
+                osc3.start(now + 0.35); osc3.stop(now + 0.42);
+
+                // 4回目の「ピ」
+                let osc4 = audioCtx.createOscillator();
+                let gain4 = audioCtx.createGain();
+                osc4.type = 'sine'; osc4.frequency.value = highFreq;
+                gain4.gain.setValueAtTime(0.35, now + 0.47);
+                gain4.gain.exponentialRampToValueAtTime(0.01, now + 0.54);
+                osc4.connect(gain4); gain4.connect(audioCtx.destination);
+                osc4.start(now + 0.47); osc4.stop(now + 0.54);
+                
+            } catch(e) { console.log(e); }
+        }
+
+        function save() { localStorage.setItem('studyLogStable', JSON.stringify(db)); }
+
+        function toggleTooltip(btn, event) {
+            event.stopPropagation();
+            const isActive = btn.classList.contains('active');
+            document.querySelectorAll('.help-btn').forEach(b => b.classList.remove('active'));
+            if (!isActive) btn.classList.add('active');
+        }
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.help-btn').forEach(b => b.classList.remove('active'));
+        });
+
+        function renderSubjectButtons() {
+            const sGrid = document.getElementById('subject-buttons'); sGrid.innerHTML = '';
+            db.subjects.forEach(s => {
+                sGrid.innerHTML += `<button class="subject-btn ${s.id==currentSubject?'active':''}" onclick="selectSubject('${s.id}',this)" style="border-color:${s.color}"><span>${s.icon}</span>${s.name}</button>`;
+            });
+        }
+        function selectSubject(id, el) { currentSubject = id; document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        
+        function renderSubjectSettings() {
+            const list = document.getElementById('setting-list'); list.innerHTML = '';
+            db.subjects.forEach((s, i) => {
+                list.innerHTML += `<div class="setting-subject-item" style="border-color:${s.color};">
+                    <input type="color" value="${s.color}" onchange="updateSub(${i}, 'color', this.value)">
+                    <input type="text" value="${s.name}" onchange="updateSub(${i}, 'name', this.value)">
+                    <button class="btn-delete" onclick="removeSub(${i})">削除</button></div>`;
+            });
+        }
+        function updateSub(idx, f, v) { db.subjects[idx][f] = v; save(); renderSubjectButtons(); renderSubjectSettings(); updateTablesAndCharts(); renderTimeGrid(); }
+        function addSub() { db.subjects.push({ id: 'sub_' + Date.now(), name: '新しい教科', color: '#ffc8dd', icon: '✏️' }); save(); renderSubjectButtons(); renderSubjectSettings(); updateTablesAndCharts(); renderTimeGrid(); }
+        
+        function removeSub(idx) { 
+            if(db.subjects.length > 1) { 
+                db.subjects.splice(idx, 1); 
+                save(); 
+                renderSubjectButtons(); 
+                renderSubjectSettings(); 
+                updateTablesAndCharts(); 
+                renderTimeGrid(); 
+            } 
+        }
+
+        function initTimer(min) { if(isRunning) return; presetSeconds = min * 60; timerSeconds = presetSeconds; updateTimerDisplay(); }
+        function updateTimerDisplay() {
+            const m = Math.floor(timerSeconds / 60), s = timerSeconds % 60;
+            document.getElementById('timer-display').innerText = `00:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        }
+        function toggleTimer() {
+            initAudio();
+            const btn = document.getElementById('start-btn');
+            if(!isRunning) {
+                if(timerSeconds <= 0) return;
+                isRunning = true; btn.innerText = "STOP!";
+                timerInterval = setInterval(() => {
+                    timerSeconds--;
+                    if(timerSeconds < 0) { 
+                        playAlertSound();
+                        recordTime(presetSeconds); 
+                        timerSeconds = presetSeconds; 
+                    }
+                    updateTimerDisplay();
+                }, 1000);
+            } else {
+                clearInterval(timerInterval); isRunning = false; btn.innerText = "START!";
+                recordTime(presetSeconds - timerSeconds); 
+            }
+        }
+        function recordTime(sec) {
+            if(sec <= 0) return;
+            const today = new Date().toLocaleDateString();
+            if(!db.history[today]) db.history[today] = {};
+            db.history[today][currentSubject] = (db.history[today][currentSubject]||0) + sec;
+            save(); renderCalendar(); updateTablesAndCharts(); renderTimeGrid();
+        }
+
+        // メイン画面用タイムグリッド（15枠構造・カチッと等幅固定）
+        function renderTimeGrid() {
+            const root = document.getElementById('time-grid-root');
+            const today = new Date().toLocaleDateString();
+            const logs = db.history[today] || {};
+            const countersRoot = document.getElementById('live-counters');
+            let counterHtml = '';
+
+            let html = `<table class="time-table"><tr><th>教科</th>`;
+            for(let i=1; i<=15; i++) html += `<th>${i}</th>`;
+            html += `<th>合計</th></tr>`;
+            
+            db.subjects.forEach(sub => {
+                const totalMin = Math.floor((logs[sub.id]||0)/60);
+                counterHtml += `<div class="counter-badge" style="border-color:${sub.color}">${sub.icon} ${sub.name}<br><span style="color:${sub.color};font-size:0.9rem;">${totalMin}分</span></div>`;
+
+                const blocks = Math.floor((logs[sub.id] || 0) / 900);
+                html += `<tr><td style="font-weight:bold; font-size:0.75rem;">${sub.name}</td>`;
+                for(let j=1; j<=15; j++) {
+                    html += `<td style="padding:0; margin:0;"><div class="cell-fill" style="background:${j <= blocks ? sub.color : 'transparent'}"></div></td>`;
+                }
+                html += `<td style="font-weight:bold;">${totalMin}分</td></tr>`;
+            });
+            root.innerHTML = html + `</table>`;
+            countersRoot.innerHTML = counterHtml;
+        }
+
+        function updateTaskPeriodSelect() {
+            const select = document.getElementById('task-test-period-select');
+            let html = `<option value="default">通常のやることリスト</option>`;
+            db.testPeriods.forEach((p, idx) => {
+                html += `<option value="${idx}">${p.name}</option>`;
+            });
+            select.innerHTML = html;
+            select.value = selectedTaskPeriodId;
+        }
+
+        function switchTaskPeriod(val) {
+            selectedTaskPeriodId = val;
+            openProgress();
+        }
+
+        function openProgress() {
+            updateTaskPeriodSelect();
+            const container = document.getElementById('task-container'); 
+            
+            let html = `
+            <div class="task-group" style="background: rgba(255,255,255,0.7); border: 2px dashed #ffafcc; padding: 10px 15px;">
+                <h3 style="font-size: 0.9rem; color: #888; margin-bottom: 5px; margin-top: 0;">💡 使い方（例）</h3>
+                <div class="task-row" style="margin-bottom: 0;">
+                    <input type="text" value="ワーク P10〜15" disabled style="background:#eee; color:#888;">
+                    <div class="check-box-group">`;
+            for(let r=0; r < (db.globalRepGoal||3); r++) {
+                html += `<div class="check-square ${r < 2 ? 'checked' : ''}" style="cursor:default; border-color:#ccc; background:${r<2?'#ccc':'white'}"></div>`;
+            }
+            html += `</div></div></div>`;
+
+            let taskSource = db.tasks;
+            if(selectedTaskPeriodId !== "default") {
+                if(!db.periodTasks) db.periodTasks = {};
+                if(!db.periodTasks[selectedTaskPeriodId]) db.periodTasks[selectedTaskPeriodId] = {};
+                taskSource = db.periodTasks[selectedTaskPeriodId];
+            }
+
+            db.subjects.forEach(sub => {
+                html += `<div class="task-group"><h3>${sub.icon} ${sub.name}</h3>`;
+                for(let i=0; i<5; i++) {
+                    const task = taskSource[sub.id]?.[i] || {name:'', checks:[]};
+                    html += `<div class="task-row"><input type="text" placeholder="範囲を入力" value="${task.name}" onchange="updateTaskName('${sub.id}',${i},this.value)">
+                        <div class="check-box-group">`;
+                    for(let r=0; r < (db.globalRepGoal||3); r++) html += `<div class="check-square ${task.checks?.[r] ? 'checked' : ''}" onclick="toggleCheck('${sub.id}', ${i}, ${r})"></div>`;
+                    html += `</div></div>`;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+            document.getElementById('progress-modal').style.display = 'block';
+        }
+        function setGlobalRep(num) { db.globalRepGoal = num; save(); openProgress(); }
+        
+        function updateTaskName(sid, i, val) { 
+            let taskSource = db.tasks;
+            if(selectedTaskPeriodId !== "default") taskSource = db.periodTasks[selectedTaskPeriodId];
+            if(!taskSource[sid]) taskSource[sid] = []; 
+            if(!taskSource[sid][i]) taskSource[sid][i] = {name:'', checks:[]}; 
+            taskSource[sid][i].name = val; save(); 
+        }
+        
+        function toggleCheck(sid, i, r) { 
+            let taskSource = db.tasks;
+            if(selectedTaskPeriodId !== "default") taskSource = db.periodTasks[selectedTaskPeriodId];
+            if(!taskSource[sid][i].checks) taskSource[sid][i].checks = []; 
+            taskSource[sid][i].checks[r] = !taskSource[sid][i].checks[r]; save(); openProgress(); 
+        }
+        function closeProgress() { document.getElementById('progress-modal').style.display = 'none'; }
+
+        function renderCalendar() {
+            const grid = document.getElementById('cal-grid'); grid.innerHTML = '';
+            const y = calViewDate.getFullYear(), m = calViewDate.getMonth();
+            document.getElementById('cal-month-title').innerText = `${y}年 ${m+1}月`;
+            const firstDay = new Date(y, m, 1).getDay(), lastDate = new Date(y, m+1, 0).getDate();
+            for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+            for(let d=1; d<=lastDate; d++) {
+                const dateObj = new Date(y, m, d), dateStr = dateObj.toLocaleDateString(), dayEl = document.createElement('div');
+                dayEl.className = 'cal-day'; dayEl.innerText = d;
+                
+                db.testPeriods.forEach(p => { 
+                    let sDate = new Date(p.start); sDate.setHours(0,0,0,0);
+                    let eDate = new Date(p.end); eDate.setHours(23,59,59,999);
+                    if(dateObj >= sDate && dateObj <= eDate) dayEl.classList.add('test-period'); 
+                });
+                
+                if(db.history[dateStr]) dayEl.classList.add('has-data');
+                if(dateStr === new Date().toLocaleDateString()) dayEl.classList.add('today');
+                grid.appendChild(dayEl);
+            }
+        }
+        function changeMonth(diff) { calViewDate.setMonth(calViewDate.getMonth() + diff); renderCalendar(); }
+        
+        function addTestPeriod() {
+            const n = document.getElementById('test-period-name').value, s = document.getElementById('test-start').value, e = document.getElementById('test-end').value;
+            if(!n || !s || !e) return;
+            db.testPeriods.push({ name: n, start: s, end: e, reflections: {} }); save(); renderCalendar();
+            document.getElementById('test-period-name').value = '';
+        }
+        
+        // 削除機能
+        function deleteTestPeriod(idx) {
+            if(confirm("このテスト期間を削除しますか？")) {
+                db.testPeriods.splice(idx, 1);
+                
+                // タスクデータのインデックスのズレを修正
+                if(db.periodTasks) {
+                    let newPeriodTasks = {};
+                    Object.keys(db.periodTasks).forEach(key => {
+                        let k = parseInt(key);
+                        if (k < idx) {
+                            newPeriodTasks[k] = db.periodTasks[k];
+                        } else if (k > idx) {
+                            newPeriodTasks[k - 1] = db.periodTasks[k];
+                        }
+                    });
+                    db.periodTasks = newPeriodTasks;
+                }
+                
+                save(); 
+                renderCalendar(); 
+                openReportModal();
+            }
+        }
+
+        let radarChart;
+        function updateTablesAndCharts() {
+            const today = new Date().toLocaleDateString();
+            radarChart.data.labels = db.subjects.map(s => s.name);
+            radarChart.data.datasets[0].data = db.subjects.map(s => (db.history[today]?.[s.id]||0)/60);
+            radarChart.update();
+        }
+
+        function openReportModal() {
+            const list = document.getElementById('test-period-list'); list.innerHTML = '';
+            db.testPeriods.forEach((t, i) => {
+                list.innerHTML += `
+                <div style="display:flex; gap:8px; margin-bottom:12px; width:100%; box-sizing:border-box;">
+                    <button class="test-period-btn" onclick="openTestDetail(${i})" style="flex:1; margin-bottom:0;"><span>${t.name}</span> <span style="font-size:0.9rem;">詳細を見る ▶</span></button>
+                    <button class="btn-manage-delete" onclick="deleteTestPeriod(${i})">削除</button>
+                </div>`;
+            });
+            document.getElementById('report-modal').style.display = 'block';
+        }
+        function closeReportModal() { document.getElementById('report-modal').style.display = 'none'; }
+        
+        function openTestDetail(idx) {
+            const t = db.testPeriods[idx]; document.getElementById('detail-test-title').innerText = t.name;
+            if(!t.reflections) t.reflections = {};
+            
+            let pTotals = {}; db.subjects.forEach(s => pTotals[s.id] = 0);
+            let cur = new Date(t.start), end = new Date(t.end);
+            while(cur <= end) {
+                let dStr = cur.toLocaleDateString();
+                if(db.history[dStr]) db.subjects.forEach(s => pTotals[s.id] += (db.history[dStr][s.id]||0));
+                cur.setDate(cur.getDate()+1);
+            }
+            
+            let periodTableHtml = `<table class="time-table-extended"><tr><th>教科</th>`;
+            for(let i=1; i<=60; i++) {
+                periodTableHtml += `<th>${i % 5 === 0 ? i : ''}</th>`;
+            }
+            periodTableHtml += `<th>合計</th></tr>`;
+
+            let html = '';
+            db.subjects.forEach(s => {
+                const m = Math.floor((pTotals[s.id]||0)/60);
+                const blocks = Math.floor((pTotals[s.id] || 0) / 900);
+                
+                periodTableHtml += `<tr><td style="font-weight:bold;">${s.name}</td>`;
+                for(let j=1; j<=60; j++) {
+                    periodTableHtml += `<td style="padding:0; margin:0;"><div class="cell-fill" style="background:${j <= blocks ? s.color : 'transparent'}"></div></td>`;
+                }
+                periodTableHtml += `<td style="font-weight:bold;">${m}分</td></tr>`;
+                
+                const pText = `${s.name}のテストはどうだった？\n反省点や次への目標を書こう！`;
+                html += `<div class="reflection-item report-box" style="border-color:${s.color};">
+                    <label>${s.icon} ${s.name} (${m}分) 
+                        <button class="help-btn" onclick="toggleTooltip(this, event)">?
+                            <span class="tooltip-text">入力した内容は自動で保存されるよ！書き終わったら下の「一覧へ戻る」を押してね。</span>
+                        </button>
+                    </label>
+                    <textarea placeholder="${pText}" onchange="saveReflection(${idx},'${s.id}',this.value)">${t.reflections[s.id]||''}</textarea>
+                </div>`;
+            });
+            periodTableHtml += `</table>`;
+            
+            document.getElementById('period-time-grid-root').innerHTML = periodTableHtml;
+            document.getElementById('detail-subject-list').innerHTML = html;
+            
+            document.getElementById('report-modal').style.display = 'none'; 
+            document.getElementById('test-detail-modal').style.display = 'block';
+        }
+        function saveReflection(i, sid, v) { db.testPeriods[i].reflections[sid] = v; save(); }
+        function closeTestDetail() { document.getElementById('test-detail-modal').style.display = 'none'; document.getElementById('report-modal').style.display = 'block'; }
+        
+        function updateTestDate(v) { db.testDate = v; save(); updateCountdown(); }
+        function updateCountdown() {
+            const d = document.getElementById('countdown-display'); if(!db.testDate)return;
+            const diff = Math.floor((new Date(db.testDate).setHours(0,0,0,0) - new Date().setHours(0,0,0,0))/86400000);
+            d.innerText = diff > 0 ? `あと ${diff} 日！` : (diff === 0 ? "🎉 テスト当日！" : "テスト終了！");
+        }
+
+        window.onload = () => {
+            document.getElementById('test-date-picker').value = db.testDate || '';
+            renderSubjectButtons(); renderSubjectSettings(); renderCalendar(); renderTimeGrid();
+            radarChart = new Chart(document.getElementById('radarChart'), {
+                type:'radar', data:{labels:[], datasets:[{label:'分', data:[], backgroundColor:'rgba(255,175,204,0.4)', borderColor:'#ff8fab'}]},
+                            options:{scales:{r:{suggestMin:0}}}
+            });
+            updateTablesAndCharts(); updateCountdown();
+        };
+    </script>
+</body>
+</html>
